@@ -13,36 +13,39 @@ export interface ILabRecord extends Document {
 
 const LabRecordSchema: Schema = new Schema(
   {
-    patientId: { 
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true 
+    patientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Patient",
+      required: true,
     },
     doctorId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Doctor"
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Doctor",
     },
     appointmentId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Appointment",
-        required: true 
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Appointment",
+      required: true,
     },
     filePath: {
-        type: String,
-        required: true
-        },
-    testName: {
-        type: String, 
-        required: true 
+      type: String,
+      required: true,
     },
-    testResult: { 
-        type: String, 
-        required: true 
+    testName: {
+      type: String,
+      required: true,
+    },
+    testResult: {
+      type: String,
+      required: true,
     },
   },
-  { 
-    timestamps: true
+  {
+    timestamps: true,
   }
 );
 
-export const LabRecord = mongoose.model<ILabRecord>("LabRecord", LabRecordSchema);
+export const LabRecord = mongoose.model<ILabRecord>(
+  "LabRecord",
+  LabRecordSchema
+);

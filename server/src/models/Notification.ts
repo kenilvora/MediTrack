@@ -1,5 +1,14 @@
 import mongoose from "mongoose";
 
+export interface INotification extends mongoose.Document {
+  user_id: mongoose.Types.ObjectId;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const NotificationSchema = new mongoose.Schema(
   {
     user_id: {
@@ -27,4 +36,4 @@ const NotificationSchema = new mongoose.Schema(
   }
 );
 
-export default mongoose.model("Notification", NotificationSchema);
+export default mongoose.model<INotification>("Notification", NotificationSchema);

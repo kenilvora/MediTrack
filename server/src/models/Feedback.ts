@@ -1,5 +1,14 @@
 import mongoose from "mongoose";
 
+export interface IFeedback extends mongoose.Document {
+  patient_id: mongoose.Types.ObjectId;
+  doctor_id: mongoose.Types.ObjectId;
+  rating: number;
+  message: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const FeedbackSchema = new mongoose.Schema(
   {
     patient_id: {
@@ -29,4 +38,4 @@ const FeedbackSchema = new mongoose.Schema(
   }
 );
 
-export default mongoose.model("Feedback", FeedbackSchema);
+export default mongoose.model<IFeedback>("Feedback", FeedbackSchema);

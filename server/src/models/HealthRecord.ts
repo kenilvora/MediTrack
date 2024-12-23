@@ -1,5 +1,15 @@
 import mongoose from "mongoose";
 
+export interface IHealthRecord extends mongoose.Document {
+  patient_id: mongoose.Types.ObjectId;
+  doctor_id: mongoose.Types.ObjectId;
+  title: string;
+  description: string;
+  files: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const HealthRecordSchema = new mongoose.Schema(
   {
     patient_id: {
