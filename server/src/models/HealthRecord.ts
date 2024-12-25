@@ -5,7 +5,6 @@ export interface IHealthRecord extends mongoose.Document {
   doctor_id: mongoose.Types.ObjectId;
   disease: string;
   description: string;
-  files: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,13 +31,6 @@ const HealthRecordSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    files: [
-      {
-        type: String,
-        required: true,
-        trim: true,
-      },
-    ],
   },
   {
     timestamps: true,

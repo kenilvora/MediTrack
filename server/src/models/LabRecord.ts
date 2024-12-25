@@ -15,20 +15,16 @@ const LabRecordSchema: Schema = new Schema(
   {
     patientId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Patient",
+      ref: "User",
       required: true,
     },
     doctorId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Doctor",
+      ref: "User",
     },
     appointmentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Appointment",
-      required: true,
-    },
-    filePath: {
-      type: String,
       required: true,
     },
     testName: {
@@ -36,6 +32,10 @@ const LabRecordSchema: Schema = new Schema(
       required: true,
     },
     testResult: {
+      type: String,
+      required: true,
+    },
+    filePath: {
       type: String,
       required: true,
     },

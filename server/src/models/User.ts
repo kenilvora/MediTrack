@@ -8,7 +8,7 @@ export interface IUser extends mongoose.Document {
   phone_number: string;
   profileId?: mongoose.Types.ObjectId;
   role: "Patient" | "Doctor" | "Admin";
-  resetPasswordURL?: string;
+  resetPasswordToken?: string;
   resetPasswordExpire?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -46,12 +46,21 @@ const UserSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       refPath: "role",
     },
+    age: {
+      type: Number,
+      required: true,
+    },
+    gender: {
+      type: String,
+      required: true,
+      enum: ["Male", "Female", "Other"],
+    },
     role: {
       type: String,
       required: true,
       enum: ["Patient", "Doctor", "Admin"],
     },
-    resetPasswordURL: {
+    resetPasswordToken: {
       type: String,
     },
     resetPasswordExpire: {

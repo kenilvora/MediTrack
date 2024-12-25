@@ -2,11 +2,13 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IDoctor extends Document {
   image: string;
-  specialization: string;
+  specialization: mongoose.Types.ObjectId[];
   licenseNumber: number;
   experience: number;
-  avaibility: boolean;
+  availability: boolean;
   visited_patients: mongoose.Types.ObjectId[];
+  appointments: mongoose.Types.ObjectId[];
+  feedbacks: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,10 +19,13 @@ const DoctorSchema: Schema = new Schema(
       type: String,
       required: true,
     },
-    specialization: {
-      type: String,
-      required: true,
-    },
+    specialization: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Specialization",
+        required: true,
+      },
+    ],
     licenseNumber: {
       type: Number,
       required: true,
@@ -37,6 +42,18 @@ const DoctorSchema: Schema = new Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
+      },
+    ],
+    appointments: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Appointment",
+      },
+    ],
+    feedbacks: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Feedback",
       },
     ],
   },

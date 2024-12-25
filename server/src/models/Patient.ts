@@ -15,6 +15,8 @@ export interface IPatient extends mongoose.Document {
   updatedAt: Date;
 }
 
+// GetAllAppointments : 1 : id ? req.user.role === admin ? id = req.params.id : req.user.role == patinent ? id = req.user.id   -> login -> req.user.id -> user -> profileId : patient : req.user.id, admin : params
+
 const PatientSchema = new mongoose.Schema(
   {
     date_of_birth: {

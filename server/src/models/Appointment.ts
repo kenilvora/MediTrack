@@ -14,12 +14,12 @@ const AppointmentSchema: Schema = new Schema(
   {
     patientId: {
       type: mongoose.Types.ObjectId,
-      ref: "Patient",
+      ref: "User",
       required: true,
     },
     doctorId: {
       type: mongoose.Types.ObjectId,
-      ref: "Doctor",
+      ref: "User",
       required: true,
     },
     dateTime: {
