@@ -1,20 +1,20 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IDoctor extends Document {
-  userId: mongoose.Types.ObjectId;
+  image: string;
   specialization: string;
   licenseNumber: number;
   experience: number;
   avaibility: boolean;
+  visited_patients: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 const DoctorSchema: Schema = new Schema(
   {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+    image: {
+      type: String,
       required: true,
     },
     specialization: {
@@ -33,10 +33,16 @@ const DoctorSchema: Schema = new Schema(
       type: Boolean,
       required: true,
     },
+    visited_patients: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,
   }
 );
 
-export const Doctor = mongoose.model<IDoctor>("Doctor", DoctorSchema);
+export default mongoose.model<IDoctor>("Doctor", DoctorSchema);

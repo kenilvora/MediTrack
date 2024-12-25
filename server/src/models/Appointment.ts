@@ -40,7 +40,4 @@ const AppointmentSchema: Schema = new Schema(
   }
 );
 
-export const Appointment = mongoose.model<IAppointment>(
-  "Appointment",
-  AppointmentSchema
-);
+export default mongoose.model<IAppointment>("Appointment", AppointmentSchema);

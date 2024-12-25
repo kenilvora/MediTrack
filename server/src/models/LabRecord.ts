@@ -45,7 +45,4 @@ const LabRecordSchema: Schema = new Schema(
   }
 );
 
-export const LabRecord = mongoose.model<ILabRecord>(
-  "LabRecord",
-  LabRecordSchema
-);
+export default mongoose.model<ILabRecord>("LabRecord", LabRecordSchema);

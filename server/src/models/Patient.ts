@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
 
 export interface IPatient extends mongoose.Document {
-  user_id: mongoose.Types.ObjectId;
   date_of_birth: Date;
   address: string;
   blood_group: "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-";
   appointments: mongoose.Types.ObjectId[];
+  image: string;
   feedbacks: mongoose.Types.ObjectId[];
   visited_doctors: mongoose.Types.ObjectId[];
   health_records: mongoose.Types.ObjectId[];
@@ -17,14 +17,12 @@ export interface IPatient extends mongoose.Document {
 
 const PatientSchema = new mongoose.Schema(
   {
-    user_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
     date_of_birth: {
       type: Date,
       required: true,
+    },
+    image: {
+      type: String,
     },
     address: {
       type: String,
@@ -52,7 +50,7 @@ const PatientSchema = new mongoose.Schema(
     visited_doctors: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Doctor",
+        ref: "User",
       },
     ],
     health_records: [

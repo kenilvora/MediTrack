@@ -6,7 +6,10 @@ export interface IUser extends mongoose.Document {
   email: string;
   password: string;
   phone_number: string;
-  role: "patient" | "doctor" | "admin";
+  profileId?: mongoose.Types.ObjectId;
+  role: "Patient" | "Doctor" | "Admin";
+  resetPasswordURL?: string;
+  resetPasswordExpire?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,10 +42,20 @@ const UserSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    profileId: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: "role",
+    },
     role: {
       type: String,
       required: true,
-      enum: ["patient", "doctor", "admin"],
+      enum: ["Patient", "Doctor", "Admin"],
+    },
+    resetPasswordURL: {
+      type: String,
+    },
+    resetPasswordExpire: {
+      type: Date,
     },
   },
   {
