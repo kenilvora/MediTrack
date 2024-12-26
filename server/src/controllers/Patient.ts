@@ -2,19 +2,21 @@ import { Request, Response } from "express";
 import Patient from "../models/Patient";
 import HealthRecord from "../models/HealthRecord";
 import User from "../models/User";
+import Appointment from "../models/Appointment";
 import { AuthRequest } from "../middlewares/auth";
+import { populate } from "dotenv";
 
 // Update Patient Profile
 export const updatePatientProfile = async (req: AuthRequest, res: Response) => {
   try {
-    const { dob, address, bloodGroup } = req.body;
+    let { dob, address, bloodGroup } = req.body;
 
     const id = req.user?.id;
 
-    if (!dob || !address || !bloodGroup) {
+    if (!dob && !address && !bloodGroup) {
       res.status(403).json({
         success: false,
-        message: "please fill all details",
+        message: "please fill details",
       });
       return;
     }
@@ -22,6 +24,12 @@ export const updatePatientProfile = async (req: AuthRequest, res: Response) => {
     const user = await User.findById(id);
 
     const profileId = user?.profileId;
+
+    const patient = await Patient.findById(profileId);
+
+    dob = dob || patient?.date_of_birth;
+    address = address || patient?.address;
+    bloodGroup = bloodGroup || patient?.blood_group;
 
     await Patient.findByIdAndUpdate(
       profileId,
@@ -35,10 +43,8 @@ export const updatePatientProfile = async (req: AuthRequest, res: Response) => {
       success: true,
       message: "Profile updated successfully",
     });
-    return;
   } catch (error) {
     res.status(500).json({ message: "Error updating profile", success: false });
-    return;
   }
 };
 
@@ -55,19 +61,20 @@ export const getAllPatients = async (req: Request, res: Response) => {
       ],
     })
       .select("-password")
-      .populate("profileId");
+      .populate({
+        path: "profileId",
+        select: "date_of_birth, address, blood_group, image",
+      });
 
     res.status(200).json({
       success: true,
       message: "Patients retrieved successfully",
       data: patients,
     });
-    return;
   } catch (error) {
     res
       .status(500)
       .json({ message: "Error retrieving patients", success: false });
-    return;
   }
 };
 
@@ -92,12 +99,10 @@ export const getPatientById = async (req: Request, res: Response) => {
       message: "Patient retrieved successfully",
       data: patient,
     });
-    return;
   } catch (error) {
     res
       .status(500)
       .json({ message: "Error retrieving patient", success: false });
-    return;
   }
 };
 
@@ -119,25 +124,24 @@ export const getMe = async (req: AuthRequest, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: "Patient retrieved successfully",
+      message: "Your data retrieved successfully",
       data: patient,
     });
-    return;
   } catch (error) {
     res
       .status(500)
-      .json({ message: "Error retrieving patient", success: false });
-    return;
+      .json({ message: "Error retrieving your data", success: false });
   }
 };
 
-// Get all patients under a doctor (doctor)
+// Get all patients under a doctor (admin,doctor)
 export const getAllPatientsUnderADoctor = async (
   req: AuthRequest,
   res: Response
 ) => {
   try {
-    const doctorId = req.params.doctorId;
+    const doctorId =
+      req.user?.role === "Admin" ? req.params.doctorId : req.user?.id;
     const patients = await User.findById(doctorId)
       .select("-password")
       .populate({
@@ -160,12 +164,10 @@ export const getAllPatientsUnderADoctor = async (
       message: "Patients retrieved successfully",
       data: patients,
     });
-    return;
   } catch (error) {
     res
       .status(500)
       .json({ message: "Error retrieving patients", success: false });
-    return;
   }
 };
 
@@ -194,12 +196,10 @@ export const getAllPatientsOfSameDisease = async (
       message: "Patients retrieved successfully",
       data: patients,
     });
-    return;
   } catch (error) {
     res
       .status(500)
       .json({ message: "Error retrieving patients", success: false });
-    return;
   }
 };
 
@@ -231,11 +231,44 @@ export const getAllPatientsOfSameBloodGroup = async (
       message: "Patients retrieved successfully",
       data: patients,
     });
-    return;
   } catch (error) {
     res
       .status(500)
       .json({ message: "Error retrieving patients", success: false });
-    return;
   }
+};
+
+export const GetAllAppointmentsofPatient = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const id = req.user?.role === "Patient" ? req.user.id : req.params.id;
+
+    const Appointments = await User.findById(id)
+      .select("-password")
+      .populate({
+        path: "profileId",
+        populate: {
+          path: "appointments",
+          populate: [
+            {
+              path: "patientId",
+              select: "firstName lastName email phone_number",
+            },
+            {
+              path: "doctorId",
+              select: "firstName lastName email phone_number",
+            },
+          ],
+        },
+        select: "appointments",
+      });
+
+    res.status(200).json({
+      success: true,
+      message: "Appointments retrieved successfully",
+      data: Appointments,
+    });
+  } catch (error) {}
 };
