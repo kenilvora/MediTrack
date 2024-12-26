@@ -72,4 +72,10 @@ const UserSchema = new mongoose.Schema(
   }
 );
 
+UserSchema.pre("save", async function (next) {
+  if (this.role === "Admin") {
+    this.profileId = undefined;
+  }
+});
+
 export default mongoose.model<IUser>("User", UserSchema);
