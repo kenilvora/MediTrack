@@ -19,7 +19,7 @@ import Doctor from "../models/Doctor";
 import otpGenerator from "otp-generator";
 import { AuthRequest } from "../middlewares/auth";
 import mailSender from "../utils/mailSender";
-import {resetPasswordTokenTemplate} from "../mails/resetPasswordTokenTemplate";
+import { resetPasswordTokenTemplate } from "../mails/resetPasswordTokenTemplate";
 import path from "path";
 
 const signupSchema = z.object({
@@ -45,7 +45,7 @@ const loginSchema = z.object({
 });
 
 const resetPasswordTokenSchema = z.object({
-  email: z.string().email()
+  email: z.string().email(),
 });
 
 const resetPasswordSchema = z.object({
@@ -53,7 +53,7 @@ const resetPasswordSchema = z.object({
   confirmPassword: z.string().min(6),
 });
 
-export const signup = async (req: Request, res: Response) => {
+export const signUp = async (req: Request, res: Response) => {
   try {
     const parsedData = signupSchema.safeParse(req.body);
 
@@ -239,26 +239,27 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const parsedData = loginSchema.safeParse(req.body);
 
-    if(!parsedData.success){
-      res.status(400).json({success: false, message: "Invalid data"});
+    if (!parsedData.success) {
+      res.status(400).json({ success: false, message: "Invalid data" });
       return;
     }
 
     const { email, password } = parsedData.data;
-    
+
     const domain = email.split("@")[1];
-      
 
     dns.resolveMx(domain, async (err, addresses) => {
       if (err || addresses.length === 0) {
         res.status(400).json({ message: "Invalid email address." });
         return;
       }
-  
+
       const user = await User.findOne({ email });
 
       if (!user) {
-        res.status(400).json({ success: false, message: "User does not exist" });
+        res
+          .status(400)
+          .json({ success: false, message: "User does not exist" });
         return;
       }
 
@@ -272,7 +273,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       const payload = {
         userId: user._id,
         role: user.role,
-      }
+      };
 
       const token = jwt.sign(payload, process.env.JWT_SECRET as string);
 
@@ -280,31 +281,33 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         secure: true,
         sameSite: "lax",
         maxAge: 31536000000,
-      })
+      });
 
-      res.status(200).json({ 
-        success: true, 
+      res.status(200).json({
+        success: true,
         token,
-        message: "Logged in Successfully"
+        message: "Logged in Successfully",
       });
     });
-  }
-  catch(error){
+  } catch (error) {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
-}
+};
 
-export const resetPasswordToken = async(req: Request, res: Response):Promise<void>=>{
-  try{
+export const resetPasswordToken = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
     const parsedData = resetPasswordTokenSchema.safeParse(req.body);
 
-    if(!parsedData.success){
-      res.status(400).json({success: false, message: "Invalid data"});
+    if (!parsedData.success) {
+      res.status(400).json({ success: false, message: "Invalid data" });
       return;
     }
 
     const { email } = parsedData.data;
-    
+
     const domain = email.split("@")[1];
 
     dns.resolveMx(domain, async (err, addresses) => {
@@ -313,15 +316,20 @@ export const resetPasswordToken = async(req: Request, res: Response):Promise<voi
         return;
       }
 
-      const user = await User.findOne({email});
+      const user = await User.findOne({ email });
 
-      if(!user){
-        res.status(404).json({success: false, message: "User does not exist"});
+      if (!user) {
+        res
+          .status(404)
+          .json({ success: false, message: "User does not exist" });
         return;
       }
-      
+
       const resetToken = crypto.randomBytes(32).toString("hex");
-      const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");  
+      const hashedToken = crypto
+        .createHash("sha256")
+        .update(resetToken)
+        .digest("hex");
 
       user.resetPasswordToken = hashedToken;
       user.resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000);
@@ -330,7 +338,7 @@ export const resetPasswordToken = async(req: Request, res: Response):Promise<voi
 
       const resetUrl = `${process.env.CLIENT_URL}/resetPassword/${resetToken}`;
 
-      try{
+      try {
         const name = `${user.firstName} ${user.lastName}`;
 
         await mailSender(
@@ -338,32 +346,42 @@ export const resetPasswordToken = async(req: Request, res: Response):Promise<voi
           "Reset Your Password",
           resetPasswordTokenTemplate(resetUrl, name)
         );
-      } catch(error){
-        res.status(500).json({ success: false, message: "Failes to send email" });
+      } catch (error) {
+        res
+          .status(500)
+          .json({ success: false, message: "Failes to send email" });
       }
 
-      res.status(200).json({ success: true, message: "Reset Password Token sent successfully" });
+      res.status(200).json({
+        success: true,
+        message: "Reset Password Token sent successfully",
+      });
     });
-  } catch(error){
+  } catch (error) {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
-}
+};
 
-export const resetPassword = async(req: Request, res: Response):Promise<void>=>{
-  try{
+export const resetPassword = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
     const token = req.params.token;
 
     const parsedData = resetPasswordSchema.safeParse(req.body);
 
-    if(!parsedData.success){
-      res.status(400).json({success: false, message: "Invalid data"});
+    if (!parsedData.success) {
+      res.status(400).json({ success: false, message: "Invalid data" });
       return;
     }
 
     const { password, confirmPassword } = parsedData.data;
 
-    if(password !== confirmPassword){
-      res.status(400).json({success: false, message: "Passwords do not match"});
+    if (password !== confirmPassword) {
+      res
+        .status(400)
+        .json({ success: false, message: "Passwords do not match" });
       return;
     }
 
@@ -371,11 +389,11 @@ export const resetPassword = async(req: Request, res: Response):Promise<void>=>{
 
     const user = await User.findOne({
       resetPasswordToken: resetToken,
-      resetPasswordExpire: { $gt: Date.now() }
+      resetPasswordExpire: { $gt: Date.now() },
     });
 
-    if(!user){
-      res.status(400).json({success: false, message: "Invalid Token"});
+    if (!user) {
+      res.status(400).json({ success: false, message: "Invalid Token" });
       return;
     }
 
@@ -385,47 +403,57 @@ export const resetPassword = async(req: Request, res: Response):Promise<void>=>{
 
     await user.save();
 
-    res.status(200).json({ success: true, message: "Password reset successfully" });
-  } catch(error){
+    res
+      .status(200)
+      .json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
-}
+};
 
-export const logOut = async(req: Request, res: Response):Promise<void>=>{
-  try{
+export const logOut = async (req: Request, res: Response): Promise<void> => {
+  try {
     res.clearCookie("token", {
       secure: true,
       sameSite: "lax",
     });
 
     res.status(200).json({ success: true, message: "Logged out successfully" });
-  } catch(error){
+  } catch (error) {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
-}
+};
 
-export const getMe = async (req: AuthRequest, res: Response) => {
+export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const id = req.user?.id;
-    const user = await User.findById(id)
-      .select("-password -resetPasswordToken -resetPasswordExpire")
-      .populate({
-        path: "profileId",
-        select:
-        req.user?.role === "Admin" ? undefined :{
+
+    let user;
+
+    if (req.user?.role === "Admin") {
+      user = await User.findById(id).select(
+        "-password -resetPasswordToken -resetPasswordExpire"
+      );
+    } else {
+      user = await User.findById(id)
+        .select("-password -resetPasswordToken -resetPasswordExpire")
+        .populate({
           path: "profileId",
           select:
             req.user?.role === "Doctor"
-          ? "-visited_patients -appointments -feedbacks"
-          : "-appointments -feedbacks -visited_doctors -health_records -lab_reports -prescriptions",
-        }
-      })
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-      
+              ? "-visited_patients -appointments -feedbacks"
+              : "-appointments -feedbacks -visited_doctors -health_records -lab_reports -prescriptions",
+        });
     }
-    return res.status(200).json({ success: true, user, message: "Data fetched successfully" });
-  } catch (error) { 
-    return res.status(500).json({ success: false, message: "Internal server error" });
+
+    if (!user) {
+      res.status(404).json({ success: false, message: "User not found" });
+      return;
+    }
+    res
+      .status(200)
+      .json({ success: true, user, message: "Data fetched successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
-}
+};
