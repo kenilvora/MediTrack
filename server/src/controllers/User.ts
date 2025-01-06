@@ -20,6 +20,7 @@ import otpGenerator from "otp-generator";
 import { AuthRequest } from "../middlewares/auth";
 import mailSender from "../utils/mailSender";
 import {resetPasswordTokenTemplate} from "../mails/resetPasswordTokenTemplate";
+import path from "path";
 
 const signupSchema = z.object({
   firstName: z.string(),
@@ -403,7 +404,7 @@ export const logOut = async(req: Request, res: Response):Promise<void>=>{
   }
 }
 
-const getMe = async (req: AuthRequest, res: Response) => {
+export const getMe = async (req: AuthRequest, res: Response) => {
   try {
     const id = req.user?.id;
     const user = await User.findById(id)
@@ -411,9 +412,13 @@ const getMe = async (req: AuthRequest, res: Response) => {
       .populate({
         path: "profileId",
         select:
-        req.user?.role === "Doctor"
+        req.user?.role === "Admin" ? undefined :{
+          path: "profileId",
+          select:
+            req.user?.role === "Doctor"
           ? "-visited_patients -appointments -feedbacks"
-          : "-appointments -feedbacks visited_doctors health_records lab_reports prescriptions",
+          : "-appointments -feedbacks -visited_doctors -health_records -lab_reports -prescriptions",
+        }
       })
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
