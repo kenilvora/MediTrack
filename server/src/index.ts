@@ -2,6 +2,7 @@ import express from "express";
 import { config } from "dotenv";
 import { dbConnect } from "./config/database";
 import cors from "cors";
+import userRoute from "./routes/UserRoute";
 
 config();
 
@@ -16,6 +17,7 @@ app.use(
     credentials: true,
   })
 );
+app.use("/api/v1/user", userRoute);
 
 app.get("/", (req, res) => {
   res.json({
