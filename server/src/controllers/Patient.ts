@@ -106,34 +106,6 @@ export const getPatientById = async (req: Request, res: Response) => {
   }
 };
 
-// Get the current patient's profile (patient)
-export const getMe = async (req: AuthRequest, res: Response) => {
-  try {
-    const id = req.user?.id;
-    const patient = await User.findOne({
-      _id: id,
-      role: "Patient",
-    })
-      .select("-password")
-      .populate("profileId");
-
-    if (!patient) {
-      res.status(404).json({ message: "Patient not found", success: false });
-      return;
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Your data retrieved successfully",
-      data: patient,
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error retrieving your data", success: false });
-  }
-};
-
 // Get all patients under a doctor (admin,doctor)
 export const getAllPatientsUnderADoctor = async (
   req: AuthRequest,
