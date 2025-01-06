@@ -49,7 +49,7 @@ export const otpTemplate = (otp: number) => {
           If you did not request this OTP, please ignore this email or contact
           support.
         </p>
-        <p>Best regards,<br />Your Company Team</p>
+        <p>Best regards,<br />MediTrack Team</p>
       </div>
       <div
         style="
@@ -60,7 +60,7 @@ export const otpTemplate = (otp: number) => {
           background: #f9f9f9;
         "
       >
-        &copy; ${new Date().getFullYear()} Your Company. All rights reserved.
+        &copy; ${new Date().getFullYear()} MediTrack. All rights reserved.
       </div>
     </div>
   </body>
