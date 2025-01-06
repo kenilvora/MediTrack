@@ -161,43 +161,6 @@ export const getDoctorById = async (req: Request, res: Response) => {
   }
 };
 
-// Get Me
-export const getMe = async (req: AuthRequest, res: Response) => {
-  try {
-    const id = req.user?.id;
-
-    const doctor = await User.findOne({ _id: id, role: "Doctor" })
-      .select("-password")
-      .populate({
-        path: "profileId",
-        populate: {
-          path: "specialization",
-          select: "name",
-        },
-        select: "-visited_patients",
-      });
-
-    if (!doctor) {
-      res.status(404).json({
-        success: false,
-        message: "Doctor not found",
-      });
-      return;
-    }
-
-    res.status(200).json({
-      success: true,
-      data: doctor,
-      message: "Doctor retrieved successfully",
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-    });
-  }
-};
-
 // Get doctor by specialization
 export const getDoctorBySpecialization = async (
   req: Request,
