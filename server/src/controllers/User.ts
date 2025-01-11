@@ -1,11 +1,3 @@
-// signup -> done
-// sentOtp -> done
-// login
-// resetPasswordToken -> frontend url
-// resetPassword -> reset password
-// getme
-// logout
-
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
@@ -20,7 +12,6 @@ import otpGenerator from "otp-generator";
 import { AuthRequest } from "../middlewares/auth";
 import mailSender from "../utils/mailSender";
 import { resetPasswordTokenTemplate } from "../mails/resetPasswordTokenTemplate";
-import path from "path";
 
 const signupSchema = z.object({
   firstName: z.string(),
@@ -51,6 +42,17 @@ const resetPasswordTokenSchema = z.object({
 const resetPasswordSchema = z.object({
   password: z.string().min(6),
   confirmPassword: z.string().min(6),
+});
+
+const changePasswordSchema = z.object({
+  oldPassword: z.string().min(6),
+  newPassword: z.string().min(6),
+  confirmPassword: z.string().min(6),
+});
+
+const updateUserDataSchema = z.object({
+  phone_number: z.string().min(10),
+  age: z.number().max(100),
 });
 
 export const signUp = async (req: Request, res: Response) => {
@@ -127,7 +129,7 @@ export const signUp = async (req: Request, res: Response) => {
           appointments: [],
           feedbacks: [],
           visited_doctors: [],
-          health_records: [],
+          health_record: null,
           lab_reports: [],
           prescriptions: [],
         });
@@ -432,7 +434,7 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
 
     if (req.user?.role === "Admin") {
       user = await User.findById(id).select(
-        "-password -resetPasswordToken -resetPasswordExpire"
+        "-password -resetPasswordToken -resetPasswordExpire -profileId"
       );
     } else {
       user = await User.findById(id)
@@ -442,7 +444,7 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
           select:
             req.user?.role === "Doctor"
               ? "-visited_patients -appointments -feedbacks"
-              : "-appointments -feedbacks -visited_doctors -health_records -lab_reports -prescriptions",
+              : "-appointments -feedbacks -visited_doctors -health_record -lab_reports -prescriptions",
         });
     }
 
@@ -453,6 +455,87 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
     res
       .status(200)
       .json({ success: true, user, message: "Data fetched successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+export const changePassword = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const parsedData = changePasswordSchema.safeParse(req.body);
+
+    if (!parsedData.success) {
+      res.status(400).json({ success: false, message: "Invalid data" });
+      return;
+    }
+
+    const { oldPassword, newPassword, confirmPassword } = parsedData.data;
+
+    if (newPassword !== confirmPassword) {
+      res
+        .status(400)
+        .json({ success: false, message: "Passwords do not match" });
+      return;
+    }
+
+    const user = await User.findById(req.user?.id);
+
+    if (!user) {
+      res.status(404).json({ success: false, message: "User not found" });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+
+    if (!isMatch) {
+      res.status(400).json({ success: false, message: "Invalid Password" });
+      return;
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+
+    await user.save();
+
+    res
+      .status(200)
+      .json({ success: true, message: "Password changed successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+export const updateUserData = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  try {
+    const parsedData = updateUserDataSchema.safeParse(req.body);
+
+    if (!parsedData.success) {
+      res.status(400).json({ success: false, message: "Invalid data" });
+      return;
+    }
+
+    const { phone_number, age } = parsedData.data;
+
+    const user = await User.findById(req.user?.id);
+
+    if (!user) {
+      res.status(404).json({ success: false, message: "User not found" });
+      return;
+    }
+
+    user.phone_number = phone_number;
+    user.age = age;
+
+    await user.save();
+
+    res
+      .status(200)
+      .json({ success: true, message: "User data updated successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Internal server error" });
   }

@@ -7,6 +7,8 @@ export interface IUser extends mongoose.Document {
   password: string;
   phone_number: string;
   profileId?: mongoose.Types.ObjectId;
+  age: number;
+  gender: "Male" | "Female" | "Other";
   role: "Patient" | "Doctor" | "Admin";
   resetPasswordToken?: string;
   resetPasswordExpire?: Date;

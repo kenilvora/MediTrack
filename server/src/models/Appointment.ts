@@ -2,9 +2,10 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IAppointment extends Document {
   patientId: mongoose.Types.ObjectId;
-  doctorID: mongoose.Types.ObjectId;
+  doctorId: mongoose.Types.ObjectId;
   dateTime: Date;
-  status: "pending" | "confirmed" | "cancelled" | "completed";
+  status: "confirmed" | "completed";
+  disease: string[];
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -28,9 +29,15 @@ const AppointmentSchema: Schema = new Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "cancelled", "completed"],
+      enum: ["confirmed", "completed"],
+      default: "confirmed",
       required: true,
     },
+    disease: [
+      {
+        type: String,
+      },
+    ],
     notes: {
       type: String,
     },

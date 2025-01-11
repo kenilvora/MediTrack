@@ -2,6 +2,26 @@ import { Request, Response } from "express";
 import Doctor from "../models/Doctor";
 import { AuthRequest } from "../middlewares/auth";
 import User from "../models/User";
+import { z } from "zod";
+import { populate } from "dotenv";
+
+interface DoctorProfile {
+  _id: string;
+  image: string;
+  specialization: { _id: string; name: string }[];
+  licenseNumber: string;
+  experience: number;
+  availability: string;
+  visited_patients: string[];
+  appointments: string[];
+  feedbacks: string[];
+}
+
+const updateDoctorProfileSchema = z.object({
+  specialization: z.array(z.string()).optional(),
+  experience: z.number().optional(),
+  availability: z.string().optional(),
+});
 
 // Update Doctor Profile
 export const updateDoctorProfile = async (
@@ -9,17 +29,19 @@ export const updateDoctorProfile = async (
   res: Response
 ): Promise<void> => {
   try {
-    let { specialization, licenseNumber, experience, availability } = req.body;
+    const parsedData = updateDoctorProfileSchema.safeParse(req.body);
 
-    const id = req.user?.id;
-
-    if (!specialization && !licenseNumber && !experience && !availability) {
+    if (!parsedData.success) {
       res.status(400).json({
         success: false,
-        message: "Please provide data to update",
+        message: "Invalid data",
       });
       return;
     }
+
+    let { specialization, experience, availability } = req.body;
+
+    const id = req.user?.id;
 
     const user = await User.findById(id);
 
@@ -27,22 +49,16 @@ export const updateDoctorProfile = async (
 
     const doctor = await Doctor.findById(profileId);
 
-    licenseNumber = licenseNumber || doctor?.licenseNumber;
     experience = experience || doctor?.experience;
     availability = availability || doctor?.availability;
-    let oldSpecialization = doctor?.specialization || [];
-
-    if (specialization) {
-      oldSpecialization.push(specialization);
-    }
+    specialization = specialization || doctor?.specialization;
 
     await Doctor.findByIdAndUpdate(
       profileId,
       {
-        licenseNumber,
         experience,
         availability,
-        specialization: oldSpecialization,
+        specialization,
       },
       { new: true }
     );
@@ -59,7 +75,7 @@ export const updateDoctorProfile = async (
   }
 };
 
-// Get all doctors : public
+// Get all doctors
 export const getAllDoctors = async (req: Request, res: Response) => {
   try {
     const filter = (req.query.filter as string) || "";
@@ -81,13 +97,21 @@ export const getAllDoctors = async (req: Request, res: Response) => {
       },
       {
         $lookup: {
-          from: "Doctor", 
+          from: "Doctor",
           localField: "profileId",
           foreignField: "_id",
           as: "profile",
         },
       },
       { $unwind: "$profile" },
+      {
+        $lookup: {
+          from: "Specialization",
+          localField: "profile.specialization",
+          foreignField: "_id",
+          as: "profile.specialization",
+        },
+      },
       {
         $addFields: {
           visited_patients_count: {
@@ -129,23 +153,48 @@ export const getDoctorById = async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
 
-    const doctor = await User.findOne({ _id: id, role: "Doctor" })
-      .select("-password")
+    const doctorData = await User.findOne({ _id: id, role: "Doctor" })
+      .select("-password -resetPasswordToken -resetPasswordExpire")
       .populate({
         path: "profileId",
         populate: {
           path: "specialization",
           select: "name",
         },
-        select: "-visited_patients",
       });
 
-    if (!doctor) {
+    if (!doctorData) {
       res.status(404).json({
         success: false,
         message: "Doctor not found",
       });
       return;
+    }
+
+    let doctor;
+
+    if (doctorData && doctorData.profileId) {
+      const profile = doctorData.profileId as unknown as DoctorProfile;
+      doctor = {
+        _id: doctorData._id,
+        firstName: doctorData.firstName,
+        lastName: doctorData.lastName,
+        email: doctorData.email,
+        phone_number: doctorData.phone_number,
+        age: doctorData.age,
+        gender: doctorData.gender,
+        profileId: {
+          _id: profile._id,
+          image: profile.image,
+          specialization: profile.specialization,
+          licenseNumber: profile.licenseNumber,
+          experience: profile.experience,
+          availability: profile.availability,
+          visited_patients_length: profile.visited_patients.length,
+          appointments_length: profile.appointments.length,
+          feedbacks_length: profile.feedbacks.length,
+        },
+      };
     }
 
     res.status(200).json({
@@ -172,46 +221,11 @@ export const getDoctorBySpecialization = async (
     const doctors = await User.find({
       role: "Doctor",
     })
-      .select("-password")
+      .select("-password -resetPasswordToken -resetPasswordExpire")
       .populate({
         path: "profileId",
-        populate: {
-          path: "specialization",
-          match: { name: specialization },
-        },
-        select: "-visited_patients",
-      });
-
-    res.status(200).json({
-      success: true,
-      data: doctors,
-      message: "Doctors retrieved successfully",
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-    });
-  }
-};
-
-// Get doctor by availability
-export const getDoctorByAvailability = async (req: Request, res: Response) => {
-  try {
-    const availability = req.params.availability;
-
-    const doctors = await User.find({
-      role: "Doctor",
-    })
-      .select("-password")
-      .populate({
-        path: "profileId",
-        match: { availability },
-        select: "-visited_patients",
-        populate: {
-          path: "specialization",
-          select: "name",
-        },
+        match: { specialization: { $in: [specialization] } },
+        select: "-visited_patients -appointments -feedbacks",
       });
 
     res.status(200).json({
@@ -230,24 +244,46 @@ export const getDoctorByAvailability = async (req: Request, res: Response) => {
 // Get doctor by experience
 export const getDoctorByExperience = async (req: Request, res: Response) => {
   try {
-    const experience = req.params.experience;
-
-    const doctors = await User.find({
-      role: "Doctor",
-    })
-      .select("-password")
-      .populate({
-        path: "profileId",
-        match: { experience },
-        select: "-visited_patients",
-        populate: {
-          path: "specialization",
-          select: "name",
+    const doctors = await User.aggregate([
+      {
+        $match: { role: "Doctor" },
+      },
+      {
+        $lookup: {
+          from: "Profile", // Replace with your actual profile collection name
+          localField: "profileId",
+          foreignField: "_id",
+          as: "profile",
         },
-      });
+      },
+      {
+        $unwind: "$profile",
+      },
+      {
+        $lookup: {
+          from: "Specialization",
+          localField: "profile.specialization",
+          foreignField: "_id",
+          as: "profile.specialization",
+        },
+      },
+      {
+        $sort: { "profile.experience": -1 }, // Sort by experience (descending)
+      },
+      {
+        $project: {
+          password: 0,
+          resetPasswordToken: 0,
+          resetPasswordExpire: 0,
+          "profile.visited_patients": 0,
+          "profile.appointments": 0,
+          "profile.feedbacks": 0,
+        },
+      },
+    ]);
 
     res.status(200).json({
-      success: true,      
+      success: true,
       data: doctors,
       message: "Doctors retrieved successfully",
     });
@@ -260,7 +296,7 @@ export const getDoctorByExperience = async (req: Request, res: Response) => {
 };
 
 // Get All Patients Under A Doctor
-export const getAllPatientsUnderDoctor = async (
+export const getAllPatientsUnderADoctor = async (
   req: AuthRequest,
   res: Response
 ) => {
@@ -278,20 +314,126 @@ export const getAllPatientsUnderDoctor = async (
     }
 
     const patients = await User.findById(id)
-      .select("-password")
+      .select("-password -resetPasswordToken -resetPasswordExpire")
       .populate({
         path: "profileId",
+        select: "visited_patients",
         populate: {
           path: "visited_patients",
-          select: "firstName lastName email phone_number",
+          select: "-password -resetPasswordToken -resetPasswordExpire",
+          populate: {
+            path: "profileId",
+            select: "image date_of_birth address blood_group",
+          },
         },
-        select: "visited_patients",
       });
 
     res.status(200).json({
       success: true,
       data: patients,
       message: "Patients retrieved successfully",
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+// Get All Appointments Of A Doctor
+export const getAllAppointmentsOfADoctor = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const id = req.user?.id;
+
+    const doctor = await User.findOne({ _id: id, role: "Doctor" });
+
+    if (!doctor) {
+      res.status(404).json({
+        success: false,
+        message: "Doctor not found",
+      });
+      return;
+    }
+
+    const appointments = await User.findById(id)
+      .select("-password -resetPasswordToken -resetPasswordExpire")
+      .populate({
+        path: "profileId",
+        select: "appointments",
+        populate: {
+          path: "appointments",
+          populate: [
+            {
+              path: "patientId",
+              select: "firstName lastName email phone_number",
+            },
+            {
+              path: "doctorId",
+              select: "firstName lastName email phone_number",
+            },
+          ],
+        },
+      });
+
+    res.status(200).json({
+      success: true,
+      data: appointments,
+      message: "Appointments retrieved successfully",
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+// Get All Feedbacks Of A Doctor
+export const getAllFeedbacksOfADoctor = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const id = req.user?.id;
+
+    const doctor = await User.findOne({ _id: id, role: "Doctor" });
+
+    if (!doctor) {
+      res.status(404).json({
+        success: false,
+        message: "Doctor not found",
+      });
+      return;
+    }
+
+    const feedbacks = await User.findById(id)
+      .select("-password -resetPasswordToken -resetPasswordExpire")
+      .populate({
+        path: "profileId",
+        select: "feedbacks",
+        populate: {
+          path: "feedbacks",
+          populate: [
+            {
+              path: "patient_id",
+              select: "firstName lastName email phone_number",
+            },
+            {
+              path: "doctor_id",
+              select: "firstName lastName email phone_number",
+            },
+          ],
+        },
+      });
+
+    res.status(200).json({
+      success: true,
+      data: feedbacks,
+      message: "Feedbacks retrieved successfully",
     });
   } catch (err) {
     res.status(500).json({
