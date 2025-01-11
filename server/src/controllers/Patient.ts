@@ -2,9 +2,7 @@ import { Request, Response } from "express";
 import Patient from "../models/Patient";
 import HealthRecord from "../models/HealthRecord";
 import User from "../models/User";
-import Appointment from "../models/Appointment";
 import { AuthRequest } from "../middlewares/auth";
-import { populate } from "dotenv";
 
 // Update Patient Profile
 export const updatePatientProfile = async (req: AuthRequest, res: Response) => {
