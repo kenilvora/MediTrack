@@ -8,7 +8,7 @@ export interface IPatient extends mongoose.Document {
   image: string;
   feedbacks: mongoose.Types.ObjectId[];
   visited_doctors: mongoose.Types.ObjectId[];
-  health_records: mongoose.Types.ObjectId[];
+  health_record: mongoose.Types.ObjectId;
   lab_reports: mongoose.Types.ObjectId[];
   prescriptions: mongoose.Types.ObjectId[];
   createdAt: Date;
@@ -55,12 +55,10 @@ const PatientSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-    health_records: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "HealthRecord",
-      },
-    ],
+    health_record: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "HealthRecord",
+    },
     lab_reports: [
       {
         type: mongoose.Schema.Types.ObjectId,
