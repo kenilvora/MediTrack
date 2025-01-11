@@ -4,6 +4,7 @@ import { z } from "zod";
 import User from "../models/User";
 import Appointment from "../models/Appointment";
 import LabRecord from "../models/LabRecord";
+import Patient from "../models/Patient";
 
 const createLabRecordSchema = z.object({
   patientId: z.string(),
@@ -60,7 +61,7 @@ export const createLabRecord = async (
     }
 
     // Create a new lab record
-    await LabRecord.create({
+    const labRecord = await LabRecord.create({
       patientId,
       doctorId: id,
       appointmentId,
@@ -68,6 +69,17 @@ export const createLabRecord = async (
       testResult,
       filePath,
     });
+
+    await Patient.updateOne(
+      {
+        _id: patientId,
+      },
+      {
+        $push: {
+          labRecords: labRecord._id,
+        },
+      }
+    );
 
     res.status(201).json({
       success: true,

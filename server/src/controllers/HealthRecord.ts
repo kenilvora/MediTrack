@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { AuthRequest } from "../middlewares/auth";
 import HealthRecord from "../models/HealthRecord";
+import Patient from "../models/Patient";
 
 const createHealthRecordSchema = z.object({
   disease: z.array(z.string()),
@@ -32,11 +33,20 @@ export const createHealthRecord = async (
 
     const { disease, description } = parsedData.data;
 
-    await HealthRecord.create({
+    const health_record = await HealthRecord.create({
       patient_id: req.user?.id,
       disease,
       description,
     });
+
+    await Patient.updateOne(
+      {
+        _id: req.user?.id,
+      },
+      {
+        health_record: health_record._id,
+      }
+    );
 
     res.status(201).json({
       success: true,
