@@ -9,11 +9,11 @@ import { populate } from "dotenv";
 // Update Patient Profile
 export const updatePatientProfile = async (req: AuthRequest, res: Response) => {
   try {
-    let { dob, address, bloodGroup } = req.body;
+    let {address} = req.body;
 
     const id = req.user?.id;
 
-    if (!dob && !address && !bloodGroup) {
+    if (!address) {
       res.status(403).json({
         success: false,
         message: "please fill details",
@@ -27,13 +27,11 @@ export const updatePatientProfile = async (req: AuthRequest, res: Response) => {
 
     const patient = await Patient.findById(profileId);
 
-    dob = dob || patient?.date_of_birth;
     address = address || patient?.address;
-    bloodGroup = bloodGroup || patient?.blood_group;
-
+    
     await Patient.findByIdAndUpdate(
       profileId,
-      { dob, address, bloodGroup },
+      { address},
       {
         new: true,
       }
@@ -52,6 +50,9 @@ export const updatePatientProfile = async (req: AuthRequest, res: Response) => {
 export const getAllPatients = async (req: Request, res: Response) => {
   try {
     const filter = (req.query.filter as string) || "";
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page-1)*limit;
 
     const patients = await User.find({
       role: "Patient",
@@ -60,21 +61,25 @@ export const getAllPatients = async (req: Request, res: Response) => {
         { lastName: { $regex: filter, $options: "i" } },
       ],
     })
-      .select("-password")
+      .select("-password -resetPasswordToken -resetPasswordExpire")
       .populate({
         path: "profileId",
         select: "date_of_birth, address, blood_group, image",
-      });
+      }).skip(skip)
+      .limit(limit)
+      .sort({createdAt: -1});
 
     res.status(200).json({
       success: true,
       message: "Patients retrieved successfully",
       data: patients,
+      page,
+      limit,
     });
   } catch (error) {
     res
       .status(500)
-      .json({ message: "Error retrieving patients", success: false });
+      .json({ message: (error as Error).message || "Error retrieving patients", success: false });
   }
 };
 
@@ -86,8 +91,11 @@ export const getPatientById = async (req: Request, res: Response) => {
       _id: id,
       role: "Patient",
     })
-      .select("-password")
-      .populate("profileId");
+      .select("-password -resetPasswordToken -resetPasswordExpire")
+      .populate({
+        path: "profileId",
+        select: "date_of_birth, address, blood_group, image",
+      });
 
     if (!patient) {
       res.status(404).json({ message: "Patient not found", success: false });
@@ -107,136 +115,136 @@ export const getPatientById = async (req: Request, res: Response) => {
 };
 
 // Get the current patient's profile (patient)
-export const getMe = async (req: AuthRequest, res: Response) => {
-  try {
-    const id = req.user?.id;
-    const patient = await User.findOne({
-      _id: id,
-      role: "Patient",
-    })
-      .select("-password")
-      .populate("profileId");
+// export const getMe = async (req: AuthRequest, res: Response) => {
+//   try {
+//     const id = req.user?.id;
+//     const patient = await User.findOne({
+//       _id: id,
+//       role: "Patient",
+//     })
+//       .select("-password")
+//       .populate("profileId");
 
-    if (!patient) {
-      res.status(404).json({ message: "Patient not found", success: false });
-      return;
-    }
+//     if (!patient) {
+//       res.status(404).json({ message: "Patient not found", success: false });
+//       return;
+//     }
 
-    res.status(200).json({
-      success: true,
-      message: "Your data retrieved successfully",
-      data: patient,
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error retrieving your data", success: false });
-  }
-};
+//     res.status(200).json({
+//       success: true,
+//       message: "Your data retrieved successfully",
+//       data: patient,
+//     });
+//   } catch (error) {
+//     res
+//       .status(500)
+//       .json({ message: "Error retrieving your data", success: false });
+//   }
+// };
 
 // Get all patients under a doctor (admin,doctor)
-export const getAllPatientsUnderADoctor = async (
-  req: AuthRequest,
-  res: Response
-) => {
-  try {
-    const doctorId =
-      req.user?.role === "Admin" ? req.params.doctorId : req.user?.id;
-    const patients = await User.findById(doctorId)
-      .select("-password")
-      .populate({
-        path: "profileId",
-        populate: [
-          {
-            path: "visited_patients",
-            select: "firstName lastName email phone_number",
-          },
-        ],
-      });
+// export const getAllPatientsUnderADoctor = async (
+//   req: AuthRequest,
+//   res: Response
+// ) => {
+//   try {
+//     const doctorId =
+//       req.user?.role === "Admin" ? req.params.doctorId : req.user?.id;
+//     const patients = await User.findById(doctorId)
+//       .select("-password")
+//       .populate({
+//         path: "profileId",
+//         populate: [
+//           {
+//             path: "visited_patients",
+//             select: "firstName lastName email phone_number",
+//           },
+//         ],
+//       });
 
-    if (!patients) {
-      res.status(404).json({ message: "Patients not found", success: false });
-      return;
-    }
+//     if (!patients) {
+//       res.status(404).json({ message: "Patients not found", success: false });
+//       return;
+//     }
 
-    res.status(200).json({
-      success: true,
-      message: "Patients retrieved successfully",
-      data: patients,
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error retrieving patients", success: false });
-  }
-};
+//     res.status(200).json({
+//       success: true,
+//       message: "Patients retrieved successfully",
+//       data: patients,
+//     });
+//   } catch (error) {
+//     res
+//       .status(500)
+//       .json({ message: "Error retrieving patients", success: false });
+//   }
+// };
 
-// Get all patients of same disease (doctor)
-export const getAllPatientsOfSameDisease = async (
-  req: AuthRequest,
-  res: Response
-) => {
-  try {
-    const disease = req.params.disease;
+// // Get all patients of same disease (doctor)
+// export const getAllPatientsOfSameDisease = async (
+//   req: AuthRequest,
+//   res: Response
+// ) => {
+//   try {
+//     const disease = req.params.disease;
 
-    const patients = await HealthRecord.find({
-      disease,
-    }).populate({
-      path: "patient_id",
-      select: "firstName lastName email phone_number",
-    });
+//     const patients = await HealthRecord.find({
+//       disease,
+//     }).populate({
+//       path: "patient_id",
+//       select: "firstName lastName email phone_number",
+//     });
 
-    if (!patients) {
-      res.status(404).json({ message: "Patients not found", success: false });
-      return;
-    }
+//     if (!patients) {
+//       res.status(404).json({ message: "Patients not found", success: false });
+//       return;
+//     }
 
-    res.status(200).json({
-      success: true,
-      message: "Patients retrieved successfully",
-      data: patients,
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error retrieving patients", success: false });
-  }
-};
+//     res.status(200).json({
+//       success: true,
+//       message: "Patients retrieved successfully",
+//       data: patients,
+//     });
+//   } catch (error) {
+//     res
+//       .status(500)
+//       .json({ message: "Error retrieving patients", success: false });
+//   }
+// };
 
-// Get all patients of same blood group (doctor)
-export const getAllPatientsOfSameBloodGroup = async (
-  req: AuthRequest,
-  res: Response
-) => {
-  try {
-    const bloodGroup = req.params.bloodGroup;
-    const patients = await User.find({
-      role: "Patient",
-    })
-      .select("-password")
-      .populate({
-        path: "profileId",
-        match: {
-          blood_group: bloodGroup,
-        },
-      });
+// // Get all patients of same blood group (doctor)
+// export const getAllPatientsOfSameBloodGroup = async (
+//   req: AuthRequest,
+//   res: Response
+// ) => {
+//   try {
+//     const bloodGroup = req.params.bloodGroup;
+//     const patients = await User.find({
+//       role: "Patient",
+//     })
+//       .select("-password")
+//       .populate({
+//         path: "profileId",
+//         match: {
+//           blood_group: bloodGroup,
+//         },
+//       });
 
-    if (!patients) {
-      res.status(404).json({ message: "Patients not found", success: false });
-      return;
-    }
+//     if (!patients) {
+//       res.status(404).json({ message: "Patients not found", success: false });
+//       return;
+//     }
 
-    res.status(200).json({
-      success: true,
-      message: "Patients retrieved successfully",
-      data: patients,
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error retrieving patients", success: false });
-  }
-};
+//     res.status(200).json({
+//       success: true,
+//       message: "Patients retrieved successfully",
+//       data: patients,
+//     });
+//   } catch (error) {
+//     res
+//       .status(500)
+//       .json({ message: "Error retrieving patients", success: false });
+//   }
+// };
 
 export const GetAllAppointmentsofPatient = async (
   req: AuthRequest,
@@ -265,10 +273,23 @@ export const GetAllAppointmentsofPatient = async (
         select: "appointments",
       });
 
+      if (!Appointments) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found or no appointments available",
+        });
+      }
+
     res.status(200).json({
       success: true,
       message: "Appointments retrieved successfully",
       data: Appointments,
     });
-  } catch (error) {}
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve appointments",
+    });
+  }
 };
+
