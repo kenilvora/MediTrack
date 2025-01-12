@@ -1,8 +1,11 @@
 import { Request, Response } from "express";
 import Patient from "../models/Patient";
-import HealthRecord from "../models/HealthRecord";
+//import HealthRecord from "../models/HealthRecord";
 import User from "../models/User";
 import { AuthRequest } from "../middlewares/auth";
+import HealthRecord from "../models/HealthRecord";
+import Prescription from "../models/Prescription";
+import LabRecord from "../models/LabRecord";
 
 // Update Patient Profile
 export const updatePatientProfile = async (req: AuthRequest, res: Response) => {
@@ -196,3 +199,176 @@ export const GetAllAppointmentsofPatient = async (
   }
 };
 
+export const getAllVisitedDoctors = async (req: AuthRequest, res: Response) => {
+  try {
+    const patientId = req.params.id;
+
+    if(!patientId) {
+       return res.status(403).json({
+        success: false,
+        message: "please login",
+      })
+    }
+
+    const Doctors = await User.findById(patientId)
+      .select("visited_doctors")
+      .populate({
+        path: "visited_doctors",
+        model: "User",
+        select: "firstName lastName email phone_number profileId", 
+          populate: {
+              path: "profileId", // Populate profileId (which contains the specialization)
+              select: "specialization licenseNumber experience image", 
+    },
+  })
+
+    if (!Doctors) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctors not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Doctors retrieved successfully",
+      data: Doctors,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve doctors",
+    });
+  }
+}
+
+export const getHealthRecordOfPatient = async (req: AuthRequest, res: Response) => {
+  try {
+    const patientId = req.params.id;
+
+    const HealthRecordOfPatient = await HealthRecord.findById(patientId);
+
+    if (!HealthRecordOfPatient) {
+      return res.status(404).json({
+        success: false,
+        message: "Health Record not found",
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: "Health Record retrieved successfully",
+      data: HealthRecordOfPatient,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve health record",
+    });
+
+  }
+
+}
+
+export const getAllLabReportsOfPatient = async (req: AuthRequest, res: Response) => {
+  try {
+    const patientId = req.params.id;
+
+    const LabReportsOfPatient = await LabRecord.findById(patientId);
+
+    if (!LabReportsOfPatient) {
+      return res.status(404).json({
+        success: false,
+        message: "Lab Reports not found",
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: "Lab Reports retrieved successfully",
+      data: LabReportsOfPatient,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve lab reports",
+    });
+
+  }
+}
+
+export const getAllPrescriptionsOfPatient = async (req: AuthRequest, res: Response) => {
+  try {
+    const patientId = req.params.id;
+
+    const PrescriptionsOfPatient = await Prescription.findById(patientId)
+      .select("medication dosage")
+      .populate({
+        path: "doctorId",
+        select: "firstName lastName",
+      })
+      .populate({
+        path: "appointmentId",
+        select: "dateTime",
+      })
+
+    if (!PrescriptionsOfPatient) {
+      return res.status(404).json({
+        success: false,
+        message: "Prescriptions not found",
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: "Prescriptions retrieved successfully",
+      data: PrescriptionsOfPatient,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve prescriptions",
+    });
+
+  }
+}
+
+export const getAllFeedbacksofPatient = async (req: AuthRequest, res: Response) => {
+  try {
+    const patientId = req.params?.id;
+
+    if(!patientId) {
+      return res.status(403).json({
+        success: false,
+        message: "please login",
+      })
+    }
+
+    const patient = await Patient.findById(patientId)
+      .select("feedbacks")
+      .populate({
+        path: "feedbacks",
+        select: "doctorId patientId rating message",
+      })
+
+      if(!patient || !patient.feedbacks.length) {
+        return res.status(404).json({
+          success: false,
+          message: "Feedbacks not found",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Feedbacks retrieved successfully",
+        data: patient.feedbacks,
+      });
+    }
+    catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve feedbacks",
+      });
+
+    }
+  }
