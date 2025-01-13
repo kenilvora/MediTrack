@@ -2,17 +2,41 @@ import Prescription from "../models/Prescription"
 import { AuthRequest } from "../middlewares/auth"
 import { Request, Response } from "express"
 import Patient from "../models/Patient";
+import {z} from "zod";
+
+const createPrescriptionSchema = z.object({
+    patientId: z.string().nonempty("Patient ID is required"),
+    doctorId: z.string().nonempty("Doctor ID is required"),
+    appointmentId: z.string().nonempty("Appointment ID is required"),
+    medication: z.string().nonempty("Medication is required"),
+    dosage: z.string().nonempty("Dosage is required"),
+});
+
+const updatePrescriptionSchema = z.object({
+    prescriptionId: z.string().nonempty("Prescription ID is required"),
+    patientId: z.string(),
+    medication: z.string().optional(),
+    dosage: z.string().optional(),
+  });
+
+const deletePrescriptionSchema = z.object({
+    prescriptionId: z.string().nonempty("Prescription ID is required"),
+    patientId: z.string().nonempty("Patient ID is required"),
+});
 
 export const createPrescription = async (Req: AuthRequest, res: Response) => {
     try{
-        const {patientId, doctorId, appointmentId, medication, dosage} = Req.body;
 
-        if(!patientId || !doctorId || !appointmentId || !medication || !dosage) {
+        const parsedData = createPrescriptionSchema.safeParse(Req.body);
+
+        if(!parsedData.success) {
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields'
+                message: "Invalid data",
+                errors: parsedData.error,
             })
-    }
+        }
+        const {patientId, doctorId, appointmentId, medication, dosage} = parsedData.data;
 
     const prescription = await Prescription.create({
         patientId,
@@ -43,14 +67,16 @@ export const createPrescription = async (Req: AuthRequest, res: Response) => {
 
 export const updatePrescription = async (Req: AuthRequest, res: Response) => {
     try{
-        const {prescriptionId, patientId, doctorId, appointmentId, medication, dosage} = Req.body;
+        const parsedData = updatePrescriptionSchema.safeParse(Req.params);    
 
-        if(!prescriptionId || !patientId || !doctorId || !appointmentId || !medication || !dosage) {
+        if(!parsedData.success) {  
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields'
+                message: "Invalid data",
+                errors: parsedData.error,
             })
-    }
+        }   
+        const {prescriptionId , patientId, medication, dosage} = parsedData.data;
 
       const updatedPrescription = await Prescription.findByIdAndUpdate(
         prescriptionId,
@@ -79,16 +105,21 @@ export const updatePrescription = async (Req: AuthRequest, res: Response) => {
 
   export const deletePrescription = async (Req: AuthRequest, res: Response) => {
     try{
-        const {prescriptionId, patientId} = Req.body;
+        
+        const parsedData = deletePrescriptionSchema.safeParse(Req.body);
 
-        if(!prescriptionId || !patientId) {
+        if(!parsedData.success) {   
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields'
+                message: "Invalid data",
+                errors: parsedData.error,
             })
-    }
+        }
+
+        const {prescriptionId, patientId} = parsedData.data;
 
         const deletedPrescription = await Prescription.findByIdAndDelete(prescriptionId);
+
 
         if(!deletePrescription){
             return res.status(404).json({

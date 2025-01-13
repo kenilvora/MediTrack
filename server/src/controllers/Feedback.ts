@@ -2,22 +2,31 @@ import { AuthRequest } from '../middlewares/auth';
 import Feedback from '../models/Feedback';
 import { Request, Response } from 'express';
 import User from '../models/User';
+import { z } from 'zod';
+
+const getFeedbackSchema = z.object({
+  patientId: z.string().nonempty("Patient ID is required"),
+  doctorId: z.string().nonempty("Doctor ID is required"),
+  rating: z.number()
+    .int()
+    .min(1, "Rating must be at least 1")
+    .max(5, "Rating cannot exceed 5"),
+  message: z.string().nonempty("Message is required"),
+});
 
 export const createFeedback = async (req: AuthRequest, res: Response) => {
   try {
-    const { patientId, doctorId, rating, message } = req.body;
+    const parsedData = getFeedbackSchema.safeParse(req.body);
 
-    if(!patientId || !doctorId || !rating || !message) {
-      return res.status(400).json({ 
+    if (!parsedData.success) {
+      return res.status(400).json({
         success: false,
-        message: 'Missing required fields' });
+        message: "Invalid data",
+        errors: parsedData.error,
+      });
     }
 
-    if(rating<1 || rating>5) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Rating must be between 1 and 5' });
-    }
+      const { patientId, doctorId, rating, message } = parsedData.data;
 
     const feedback = await Feedback.create({
       patient_id: patientId,
@@ -44,6 +53,7 @@ export const createFeedback = async (req: AuthRequest, res: Response) => {
       message: 'Feedback created successfully',
       data: feedback,
     });
+  
   } catch (error) {
     return res.status(500).json({ 
       success: false,

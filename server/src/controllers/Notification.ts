@@ -1,18 +1,28 @@
 import { Request, Response } from "express";
 import Notification from "../models/Notification";
 import { AuthRequest } from "../middlewares/auth";
+import {z} from "zod";
+
+const createNotificationSchema = z.object({
+    userId: z.string().nonempty("User ID is required"),
+    title: z.string().nonempty("Title is required"),
+    message: z.string().nonempty("Message is required"),
+});
 
 export const createNotification = async (req: AuthRequest, res: Response) => {
     try{
-        const{userId, title, message} = req.body;
 
-        if(!userId || !title || !message) {
+       const parsedData = createNotificationSchema.safeParse(req.body);
+
+        if(!parsedData.success) {
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields'
+                message: "Invalid data",
+                errors: parsedData.error,
             })
-
         }
+
+        const {userId, title, message} = parsedData.data;
 
         const notification = await Notification.create({
             user_id: userId,
