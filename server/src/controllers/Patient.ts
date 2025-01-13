@@ -6,13 +6,27 @@ import { AuthRequest } from "../middlewares/auth";
 import HealthRecord from "../models/HealthRecord";
 import Prescription from "../models/Prescription";
 import LabRecord from "../models/LabRecord";
+import {z} from "zod";
+
+const updatePatientProfileSchema = z.object({
+    address: z.string().optional(),
+});
 
 // Update Patient Profile
 export const updatePatientProfile = async (req: AuthRequest, res: Response) => {
   try {
-    let {address} = req.body;
+    const parsedData = updatePatientProfileSchema.safeParse(req.body);
 
-    const id = req.user?.id;
+    if(!parsedData.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid data",
+        errors: parsedData.error,
+      });
+    }
+    let {address} = parsedData.data;
+
+    const id = req.user?.id || req.params.id;
 
     if (!address) {
       res.status(403).json({
